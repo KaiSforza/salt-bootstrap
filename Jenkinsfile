@@ -14,9 +14,9 @@ pipeline {
         stage('shellcheck') {
             node {
                 step([$class: 'hudson.plugins.checkstyle.CheckStylePublisher', checkstyle: 'checkstyle.xml'])
-                step(echo 'running shellcheck..')
-                step(sh 'shellcheck -s sh -f checkstyle bootstrap-salt.sh | tee checkstyle.xml')
-                step(publishIssues issues:[checkstyle])
+                echo 'running shellcheck..'
+                sh 'shellcheck -s sh -f checkstyle bootstrap-salt.sh | tee checkstyle.xml'
+                publishIssues issues:[checkstyle]
                 }
             }
         }
