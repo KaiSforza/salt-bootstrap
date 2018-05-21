@@ -12,12 +12,10 @@ pipeline {
 
     stages {
         stage('shellcheck') {
-            node {
-                step([$class: 'hudson.plugins.checkstyle.CheckStylePublisher', checkstyle: 'checkstyle.xml'])
-                echo 'running shellcheck..'
-                sh 'shellcheck -s sh -f checkstyle bootstrap-salt.sh | tee checkstyle.xml'
-                publishIssues issues:[checkstyle]
-            }
+            step([$class: 'hudson.plugins.checkstyle.CheckStylePublisher', checkstyle: 'checkstyle.xml'])
+            echo 'running shellcheck..'
+            sh 'shellcheck -s sh -f checkstyle bootstrap-salt.sh | tee checkstyle.xml'
+            publishIssues issues:[checkstyle]
         }
     }
 }
