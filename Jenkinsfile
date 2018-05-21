@@ -11,12 +11,13 @@ pipeline {
 
     stages {
         stage('shellcheck') {
+            def checkstyle = scanForIssues tool: [$class: 'CheckStyle'], pattern: '**/target/checkstyle-result.xml'
+
             steps {
                 echo 'running shellcheck..'
                 sh 'shellcheck -s sh -f checkstyle bootstrap-salt.sh | tee checkstyle.xml'
-                def checkstyle = scanForIssues tool: [$class: 'CheckStyle'], pattern: '**/target/checkstyle-result.xml'
-                publishIssues issues:[checkstyle]
             }
+            publishIssues issues:[checkstyle]
         }
     }
 }
