@@ -21,7 +21,7 @@ pipeline {
             steps {
                 echo 'publishing shell check results...'
                 checkstyle pattern: checkstyle.xml
-                // publishIssues issues:[checkstyle]
+                publishIssues issues:[checkstyle]
             }
         }
     }
