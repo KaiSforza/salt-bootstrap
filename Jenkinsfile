@@ -14,7 +14,6 @@ pipeline {
             steps {
                 echo 'running shellcheck..'
                 shellcheck -s sh -f checkstyle bootstrap-salt.sh | tee checkstyle.xml
-                # def checkstyle = scanForIssues tool: [$class: 'CheckStyle'], pattern: '**/target/checkstyle-result.xml'
                 publishIssues issues:[checkstyle]
             }
         }
