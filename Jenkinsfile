@@ -15,7 +15,7 @@ pipeline {
             steps {
                 echo 'running shellcheck..'
                 sh 'shellcheck -s sh -f checkstyle bootstrap-salt.sh | tee checkstyle.xml'
-                checkstyle checkstyle.xml
+                checkstyle pattern: checkstyle.xml
                 // publishIssues issues:[checkstyle]
             }
         }
