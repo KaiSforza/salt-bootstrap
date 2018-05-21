@@ -13,8 +13,13 @@ pipeline {
     stages {
         stage('shellcheck') {
             steps {
-                echo 'running shellcheck..'
+                echo 'running shellcheck...'
                 sh 'shellcheck -s sh -f checkstyle bootstrap-salt.sh | tee checkstyle.xml'
+            }
+        }
+        stage('publish') {
+            steps {
+                echo 'publishing shell check results...'
                 checkstyle pattern: checkstyle.xml
                 // publishIssues issues:[checkstyle]
             }
