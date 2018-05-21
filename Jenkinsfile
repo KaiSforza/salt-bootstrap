@@ -20,7 +20,7 @@ pipeline {
         stage('publish') {
             steps {
                 echo 'publishing shell check results...'
-                checkstyle pattern: checkstyle.xml
+                checkstyle pattern: **/checkstyle.xml
                 publishIssues issues:[checkstyle]
             }
         }
