@@ -6,18 +6,18 @@ def notifyFailed(String stageName) {
   slackSend (color: '#FF0000', message: "FAILED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})" + "\n  Stage -- " + stageName)
 }
 
+def checkstyle = scanForIssues tool: [$class: 'CheckStyle'], pattern: '**/target/checkstyle-result.xml'
+
 pipeline {
     agent any
 
     stages {
         stage('shellcheck') {
-            def checkstyle = scanForIssues tool: [$class: 'CheckStyle'], pattern: '**/target/checkstyle-result.xml'
-
             steps {
                 echo 'running shellcheck..'
                 sh 'shellcheck -s sh -f checkstyle bootstrap-salt.sh | tee checkstyle.xml'
+                publishIssues issues:[checkstyle]
             }
-            publishIssues issues:[checkstyle]
         }
     }
 }
