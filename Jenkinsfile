@@ -4,6 +4,7 @@ Random rand = new Random()
 
 // ONLY CHANGE THIS BIT PLEASE
 def baseDistros = ["debian8",
+                   "debian9",
                    "suse",
                    "centos6",
                    "arch",
@@ -11,7 +12,7 @@ def baseDistros = ["debian8",
                    "ubuntu-18.04",
                    "windows",
                    ]
-def versions = ["stable", "git", "stable-old"]
+def versions = ["stable", "stable-old", "git"]
 
 def basePrDistros = ["ubuntu-16.04",
                      "centos7"]
@@ -19,9 +20,6 @@ def basePrDistros = ["ubuntu-16.04",
 def prVersions = ["stable", "git"]
 
 // You probably shouldn't be messing with this stuff down here
-
-def distros = (baseDistros + basePrDistros).unique()
-
 def notifySuccessful(String stageName) {
     slackSend (color: '#00FF00', message: "SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})" + "\n  Stage -- " + stageName)
 }
@@ -30,42 +28,51 @@ def notifyFailed(String stageName) {
     slackSend (color: '#FF0000', message: "FAILED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})" + "\n  Stage -- " + stageName)
 }
 
-def runKitchen(String distro) {
-    echo "kitchen create ${distro}"
-    echo "kitchen converge ${distro}"
-    echo "kitchen destroy ${distro}"
-}
+// Combines lists (Because we can't use .combinations())
+def listCombinations(a, b) {
+    def ret = []
+    for (i in a) {
+        for (j in b) {
+            ret = ret + [[i, j]]
+        }
+    }
+    return ret
 
-def distroversions = []
-for (d in distros) {
-    for (v in versions) {
-        distroversions = distroversions + ["${d}-${v}"]
+def distros = (baseDistros + basePrDistros).unique()
+
+// Runs actual kitchen scripts for the distros and versions
+def runKitchen(String distro, String version) {
+    def runon = "${distro}-${version}"
+    stage("kitchen-${runon}-test") {
+        echo "kitchen create ${runon}"
+        echo "kitchen converge ${runon}"
+    }
+    stage("kitchen-${runon}-destroy") {
+        echo "kitchen destroy ${runon}"
     }
 }
+
+def distroversions = listCombinations(distros, versions)
 
 def prDistros = (basePrDistros + distros[rand.nextInt(baseDistros.size())]).unique()
 
-def prDistroversions = []
-for (d in prDistros) {
-    for (v in prVersions) {
-        prDistroversions = prDistroversions + ["${d}-${v}"]
-    }
-}
+def prDistroversions = listCombinations(prDistros, prVersions)
 
-def makeSetupRuns(dv) {
+// Creates the nodes for each runKitchen function
+def makeSetupRuns(d, v) {
     return {
         node {
-            runKitchen("${dv}")
+            runKitchen(d, v)
         }
     }
 }
 
 def setupRuns = distroversions.collectEntries {
-    ["kitchen-${it}" : makeSetupRuns("${it}")]
+    ["kitchen-${it[0]}-${it[1]}" : makeSetupRuns(it[0], it[1])]
 }
 
 def prSetupRuns = prDistroversions.collectEntries {
-    ["kitchen-${it}" : makeSetupRuns("${it}")]
+    ["kitchen-${it[0]}-${it[1]}" : makeSetupRuns(it[0], it[1])]
 }
 
 node ('bootstrap') {
