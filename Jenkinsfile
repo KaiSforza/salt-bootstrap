@@ -1,99 +1,100 @@
-import java.util.Random
+pipeline {
+    agent { label 'bootstrap' } {
+    stages {
+        stage('shellcheck') {
+            steps {
+                sh 'shellcheck -s sh -f checkstyle bootstrap-salt.sh | tee checkstyle.xml'
+                checkstyle pattern: '**/checkstyle.xml'
+                archiveArtifacts artifacts: '**/checkstyle.xml'
+            }
+        }
+        stage('kitchen') {
+            script {
+                import java.util.Random
 
-Random rand = new Random()
+                Random rand = new Random()
 
-// ONLY CHANGE THIS BIT PLEASE
-def baseDistros = ["debian8",
-                   "debian9",
-                   "suse",
-                   "centos6",
-                   "arch",
-                   "ubuntu-14.04",
-                   "ubuntu-18.04",
-                   "windows",
-                   ]
-def versions = ["stable", "stable-old", "git"]
+                // ONLY CHANGE THIS BIT PLEASE
+                def baseDistros = ["debian8",
+                                   "debian9",
+                                   "suse",
+                                   "centos6",
+                                   "arch",
+                                   "ubuntu-14.04",
+                                   "ubuntu-18.04",
+                                   "windows",
+                                   ]
+                def versions = ["stable", "stable-old", "git"]
 
-def basePrDistros = ["ubuntu-16.04",
-                     "centos7"]
+                def basePrDistros = ["ubuntu-16.04",
+                                     "centos7"]
 
-def prVersions = ["stable", "git"]
+                def prVersions = ["stable", "git"]
 
-// You probably shouldn't be messing with this stuff down here
-def notifySuccessful(String stageName) {
-    slackSend (color: '#00FF00', message: "SUCCESSFUL: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})" + "\n  Stage -- " + stageName)
-}
+                // You probably shouldn't be messing with this stuff down here
+                // Combines lists (Because we can't use .combinations())
 
-def notifyFailed(String stageName) {
-    slackSend (color: '#FF0000', message: "FAILED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})" + "\n  Stage -- " + stageName)
-}
+                def listCombinations(a, b) {
+                    def ret = []
+                    for (i in a) {
+                        for (j in b) {
+                            ret = ret + [[i, j]]
+                        }
+                    }
+                    return ret
+                }
 
-// Combines lists (Because we can't use .combinations())
-def listCombinations(a, b) {
-    def ret = []
-    for (i in a) {
-        for (j in b) {
-            ret = ret + [[i, j]]
+                def distros = (baseDistros + basePrDistros).unique()
+
+                // Runs actual kitchen scripts for the distros and versions
+                def runKitchen(String distro, String version) {
+                    def runon = "${distro}-${version}"
+                    stage ("kitchen-${runon}") {
+                        echo "kitchen create ${runon}"
+                        echo "kitchen converge ${runon}"
+                        echo "kitchen destroy ${runon}"
+                    }
+                }
+
+                def distroversions = listCombinations(distros, versions)
+
+                def prDistros = (basePrDistros + distros[rand.nextInt(baseDistros.size())]).unique()
+
+                def prDistroversions = listCombinations(prDistros, prVersions)
+
+                // Creates the nodes for each runKitchen function
+                def makeSetupRuns(d, v) {
+                    return {
+                        node {
+                            runKitchen(d, v)
+                            checkpoint "kitchen-${d}-${v}"
+                        }
+                    }
+                }
+
+                def setupRuns = distroversions.collectEntries {
+                    ["kitchen-${it[0]}-${it[1]}" : makeSetupRuns(it[0], it[1])]
+                }
+
+                def prSetupRuns = prDistroversions.collectEntries {
+                    ["kitchen-${it[0]}-${it[1]}" : makeSetupRuns(it[0], it[1])]
+                }
+                if (env.CHANGE_ID) {
+                    // Running for a PR only runs against 4 random distros from a shorter list
+                    stage('kitchen-pr') {
+                        parallel prSetupRuns
+                    }
+                } else {
+                    // If we're not running for a pr we run *everything*
+                    stage('kitchen-all') {
+                        parallel setupRuns
+                    }
+                }
+            }
         }
     }
-    return ret
 }
 
-def distros = (baseDistros + basePrDistros).unique()
-
-// Runs actual kitchen scripts for the distros and versions
-def runKitchen(String distro, String version) {
-    def runon = "${distro}-${version}"
-    stage ("kitchen-${runon}") {
-        echo "kitchen create ${runon}"
-        echo "kitchen converge ${runon}"
-        echo "kitchen destroy ${runon}"
-    }
-}
-
-def distroversions = listCombinations(distros, versions)
-
-def prDistros = (basePrDistros + distros[rand.nextInt(baseDistros.size())]).unique()
-
-def prDistroversions = listCombinations(prDistros, prVersions)
-
-// Creates the nodes for each runKitchen function
-def makeSetupRuns(d, v) {
-    return {
-        node {
-            runKitchen(d, v)
-            checkpoint "kitchen-${d}-${v}"
-        }
-    }
-}
-
-def setupRuns = distroversions.collectEntries {
-    ["kitchen-${it[0]}-${it[1]}" : makeSetupRuns(it[0], it[1])]
-}
-
-def prSetupRuns = prDistroversions.collectEntries {
-    ["kitchen-${it[0]}-${it[1]}" : makeSetupRuns(it[0], it[1])]
-}
-
-node ('bootstrap') {
-    stage('checkout') { checkout scm }
-    stage('shellcheck') {
-        sh 'shellcheck -s sh -f checkstyle bootstrap-salt.sh | tee checkstyle.xml'
-        checkstyle pattern: '**/checkstyle.xml'
-        archiveArtifacts artifacts: '**/checkstyle.xml'
-    }
-    if (env.CHANGE_ID) {
-        // Running for a PR only runs against 4 random distros from a shorter list
-        stage('kitchen-pr') {
-            parallel prSetupRuns
-        }
-    } else {
-        // If we're not running for a pr we run *everything*
-        stage('kitchen-all') {
-            parallel setupRuns
-        }
-    }
-}
 
 /*
  * TODO:
