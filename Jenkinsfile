@@ -37,6 +37,7 @@ def listCombinations(a, b) {
         }
     }
     return ret
+}
 
 def distros = (baseDistros + basePrDistros).unique()
 
