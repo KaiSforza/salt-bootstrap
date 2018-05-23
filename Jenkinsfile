@@ -44,11 +44,9 @@ def distros = (baseDistros + basePrDistros).unique()
 // Runs actual kitchen scripts for the distros and versions
 def runKitchen(String distro, String version) {
     def runon = "${distro}-${version}"
-    stage("kitchen-${runon}-test") {
+    stage ("kitchen-${runon}") {
         echo "kitchen create ${runon}"
         echo "kitchen converge ${runon}"
-    }
-    stage("kitchen-${runon}-destroy") {
         echo "kitchen destroy ${runon}"
     }
 }
@@ -64,6 +62,7 @@ def makeSetupRuns(d, v) {
     return {
         node {
             runKitchen(d, v)
+            checkpoint "kitchen-${d}-${v}"
         }
     }
 }
