@@ -10,10 +10,6 @@ pipeline {
         }
         stage('kitchen') {
             script {
-                import java.util.Random
-
-                Random rand = new Random()
-
                 // ONLY CHANGE THIS BIT PLEASE
                 def baseDistros = ["debian8",
                                    "debian9",
@@ -58,7 +54,7 @@ pipeline {
 
                 def distroversions = listCombinations(distros, versions)
 
-                def prDistros = (basePrDistros + distros[rand.nextInt(baseDistros.size())]).unique()
+                def prDistros = basePrDistros
 
                 def prDistroversions = listCombinations(prDistros, prVersions)
 
