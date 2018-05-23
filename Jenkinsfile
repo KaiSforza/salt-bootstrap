@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'bootstrap' } {
+    agent { label 'bootstrap' }
     stages {
         stage('shellcheck') {
             steps {
