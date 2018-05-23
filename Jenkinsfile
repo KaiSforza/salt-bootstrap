@@ -1,3 +1,70 @@
+// ONLY CHANGE THIS BIT PLEASE
+def baseDistros = ["debian8",
+                   "debian9",
+                   "suse",
+                   "centos6",
+                   "arch",
+                   "ubuntu-14.04",
+                   "ubuntu-18.04",
+                   "windows",
+                   ]
+def versions = ["stable", "stable-old", "git"]
+
+def basePrDistros = ["ubuntu-16.04",
+                     "centos7"]
+
+def prVersions = ["stable", "git"]
+
+// You probably shouldn't be messing with this stuff down here
+// Combines lists (Because we can't use .combinations())
+
+def listCombinations(a, b) {
+    def ret = []
+    for (i in a) {
+        for (j in b) {
+            ret = ret + [[i, j]]
+        }
+    }
+    return ret
+}
+
+def distros = (baseDistros + basePrDistros).unique()
+
+// Runs actual kitchen scripts for the distros and versions
+def runKitchen(String distro, String version) {
+    def runon = "${distro}-${version}"
+    stage ("kitchen-${runon}") {
+        echo "kitchen create ${runon}"
+        echo "kitchen converge ${runon}"
+        echo "kitchen destroy ${runon}"
+    }
+}
+
+def distroversions = listCombinations(distros, versions)
+
+def prDistros = basePrDistros
+
+def prDistroversions = listCombinations(prDistros, prVersions)
+
+// Creates the nodes for each runKitchen function
+def makeSetupRuns(d, v) {
+    return {
+        node {
+            runKitchen(d, v)
+            checkpoint "kitchen-${d}-${v}"
+        }
+    }
+}
+
+def setupRuns = distroversions.collectEntries {
+    ["kitchen-${it[0]}-${it[1]}" : makeSetupRuns(it[0], it[1])]
+}
+
+def prSetupRuns = prDistroversions.collectEntries {
+    ["kitchen-${it[0]}-${it[1]}" : makeSetupRuns(it[0], it[1])]
+}
+
+
 pipeline {
     agent { label 'bootstrap' }
     stages {
@@ -10,71 +77,6 @@ pipeline {
         }
         stage('kitchen') {
             script {
-                // ONLY CHANGE THIS BIT PLEASE
-                def baseDistros = ["debian8",
-                                   "debian9",
-                                   "suse",
-                                   "centos6",
-                                   "arch",
-                                   "ubuntu-14.04",
-                                   "ubuntu-18.04",
-                                   "windows",
-                                   ]
-                def versions = ["stable", "stable-old", "git"]
-
-                def basePrDistros = ["ubuntu-16.04",
-                                     "centos7"]
-
-                def prVersions = ["stable", "git"]
-
-                // You probably shouldn't be messing with this stuff down here
-                // Combines lists (Because we can't use .combinations())
-
-                def listCombinations(a, b) {
-                    def ret = []
-                    for (i in a) {
-                        for (j in b) {
-                            ret = ret + [[i, j]]
-                        }
-                    }
-                    return ret
-                }
-
-                def distros = (baseDistros + basePrDistros).unique()
-
-                // Runs actual kitchen scripts for the distros and versions
-                def runKitchen(String distro, String version) {
-                    def runon = "${distro}-${version}"
-                    stage ("kitchen-${runon}") {
-                        echo "kitchen create ${runon}"
-                        echo "kitchen converge ${runon}"
-                        echo "kitchen destroy ${runon}"
-                    }
-                }
-
-                def distroversions = listCombinations(distros, versions)
-
-                def prDistros = basePrDistros
-
-                def prDistroversions = listCombinations(prDistros, prVersions)
-
-                // Creates the nodes for each runKitchen function
-                def makeSetupRuns(d, v) {
-                    return {
-                        node {
-                            runKitchen(d, v)
-                            checkpoint "kitchen-${d}-${v}"
-                        }
-                    }
-                }
-
-                def setupRuns = distroversions.collectEntries {
-                    ["kitchen-${it[0]}-${it[1]}" : makeSetupRuns(it[0], it[1])]
-                }
-
-                def prSetupRuns = prDistroversions.collectEntries {
-                    ["kitchen-${it[0]}-${it[1]}" : makeSetupRuns(it[0], it[1])]
-                }
                 if (env.CHANGE_ID) {
                     // Running for a PR only runs against 4 random distros from a shorter list
                     stage('kitchen-pr') {
