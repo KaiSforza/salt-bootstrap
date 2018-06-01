@@ -19,6 +19,8 @@ code_quality:
         "registry.gitlab.com/gitlab-org/security-products/codequality:$SP_VERSION" /code/bootstrap-salt.sh
   artifacts:
     paths: [gl-code-quality-report.json]
+  tags:
+    - docker
 
 checkstyle:
   stage: codequality
@@ -28,3 +30,5 @@ checkstyle:
   artifacts:
     paths:
       - shellcheck.xml
+  tags:
+    - docker
