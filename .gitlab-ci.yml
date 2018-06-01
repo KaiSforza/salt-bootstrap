@@ -25,10 +25,11 @@ code_quality:
 checkstyle:
   stage: codequality
   image: koalaman/shellcheck-alpine:stable
+  allow_failure: true
   script:
-    - shellcheck ./bootstrap-salt.sh | tee shellcheck.xml
+    - shellcheck -s sh -f checkstyle bootstrap-salt.sh | tee checkstyle.xml
   artifacts:
     paths:
-      - shellcheck.xml
+      - checkstyle.xml
   tags:
     - docker
