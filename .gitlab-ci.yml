@@ -26,7 +26,7 @@ checkstyle:
   image: koalaman/shellcheck-alpine:stable
   allow_failure: true
   script:
-    - shellcheck -s sh -f checkstyle bootstrap-salt.sh | tee checkstyle.xml
+    - shellcheck -s sh -f checkstyle bootstrap-salt.sh | tee checkstyle.xml || exit 0
   artifacts:
     paths:
       - checkstyle.xml
